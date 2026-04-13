@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Morning Mobility</title>
+<style>
+  :root {
+    --bg: #F6F5F2;
+    --card: #FFFFFF;
+    --accent: #4A7C6F;
+    --text: #1A1A1A;
+    --text-mid: #555;
+    --text-light: #888;
+    --border: #E6E6E6;
+    --warmup: #E8733A;
+    --warmup-bg: #FDF0E8;
+    --lower: #4A7C6F;
+    --lower-bg: #E8F0ED;
+    --upper: #5B6AAF;
+    --upper-bg: #ECEEF7;
+    --cool: #8B6BAF;
+    --cool-bg: #F0EAF5;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.5;
+    -webkit-font-smoothing: antialiased; padding-bottom: 60px;
+  }
+  header {
+    background: linear-gradient(145deg, #3E6E62, #4A7C6F, #5A8F7F);
+    color: white; padding: 48px 24px 24px; text-align: center;
+  }
+  header h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; }
+  header p { font-size: 14px; opacity: 0.8; margin-top: 2px; }
+  .header-pills { display: flex; justify-content: center; gap: 10px; margin-top: 14px; }
+  .header-pills span { font-size: 12px; font-weight: 600; background: rgba(255,255,255,0.18); padding: 4px 14px; border-radius: 20px; }
+
+  .wake-lock-bar {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    padding: 12px 20px; font-size: 13px; color: var(--text-mid);
+    background: #EDECEA; border-bottom: 1px solid var(--border);
+  }
+  .toggle {
+    position: relative; width: 44px; height: 26px;
+    background: #ccc; border-radius: 13px; cursor: pointer; transition: background 0.25s; flex-shrink: 0;
+  }
+  .toggle.on { background: var(--accent); }
+  .toggle::after {
+    content: ''; position: absolute; top: 3px; left: 3px;
+    width: 20px; height: 20px; background: white; border-radius: 50%;
+    transition: transform 0.25s; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  }
+  .toggle.on::after { transform: translateX(18px); }
+
+  .section-label {
+    display: flex; align-items: center; gap: 8px;
+    padding: 22px 20px 8px; font-size: 12px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 1.2px;
+  }
+  .section-label .dot { width: 8px; height: 8px; border-radius: 50%; }
+
+  .card {
+    background: var(--card); margin: 8px 16px; border-radius: 16px;
+    overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.05); border: 1px solid var(--border);
+  }
+  .card.active { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(74,124,111,0.2); }
+  .card-top { display: flex; justify-content: space-between; align-items: flex-start; padding: 16px 16px 0; }
+  .card-top h3 { font-size: 17px; font-weight: 700; flex: 1; }
+  .time-pill { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 12px; white-space: nowrap; flex-shrink: 0; margin-left: 8px; }
+
+  /* ILLUSTRATION */
+  .illust {
+    display: flex; justify-content: center; padding: 12px 12px 0; gap: 8px;
+  }
+  .illust svg { max-height: 140px; width: auto; }
+  .pose-label {
+    font-size: 10px; font-weight: 600; text-anchor: middle; fill: currentColor;
+  }
+
+  /* FORM CUES */
+  .form-cues { padding: 10px 16px 0; display: flex; flex-direction: column; gap: 6px; }
+  .cue { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; color: var(--text-mid); line-height: 1.45; }
+  .cue-num {
+    flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; color: white; margin-top: 1px;
+  }
+  .cue-text { padding-top: 1px; }
+  .cue-text strong { color: var(--text); font-weight: 600; }
+
+  .key-point {
+    margin: 10px 16px 0; padding: 10px 12px; border-radius: 10px;
+    font-size: 13px; font-weight: 500; display: flex; align-items: flex-start; gap: 8px;
+  }
+  .key-point .kp-icon { flex-shrink: 0; font-size: 14px; padding-top: 1px; }
+
+  .tags { padding: 10px 16px 0; display: flex; gap: 6px; flex-wrap: wrap; }
+  .tag { font-size: 11px; font-weight: 600; padding: 2px 10px; border-radius: 8px; }
+
+  .timer-bar { margin: 12px 16px 0; display: flex; align-items: center; gap: 12px; }
+  .timer-btn {
+    width: 44px; height: 44px; border-radius: 50%; border: none;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; cursor: pointer; -webkit-tap-highlight-color: transparent;
+    transition: transform 0.15s; flex-shrink: 0;
+  }
+  .timer-btn:active { transform: scale(0.92); }
+  .timer-display { flex: 1; height: 6px; background: #ECECEC; border-radius: 3px; overflow: hidden; position: relative; }
+  .timer-fill { position: absolute; top: 0; left: 0; height: 100%; border-radius: 3px; width: 0%; transition: width 0.3s linear; }
+  .timer-label { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; min-width: 42px; text-align: right; flex-shrink: 0; }
+
+  .done-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 16px; margin-top: 12px; border-top: 1px solid var(--border);
+    cursor: pointer; -webkit-tap-highlight-color: transparent;
+  }
+  .done-row input[type="checkbox"] { width: 22px; height: 22px; accent-color: var(--accent); flex-shrink: 0; }
+  .done-row label { font-size: 13px; color: var(--text-light); cursor: pointer; }
+  .done-row.checked label { text-decoration: line-through; opacity: 0.4; }
+
+  .tips {
+    margin: 24px 16px; padding: 20px; background: #E8F0ED; border-radius: 16px; border: 1px solid #C8DDD6;
+  }
+  .tips h3 { font-size: 15px; font-weight: 700; color: var(--accent); margin-bottom: 10px; }
+  .tips ul { list-style: none; }
+  .tips li { font-size: 13px; color: var(--text-mid); padding: 5px 0 5px 20px; position: relative; }
+  .tips li::before { content: "→"; position: absolute; left: 0; color: var(--accent); font-weight: 700; }
+
+  .progress-wrap { position: fixed; bottom: 0; left: 0; right: 0; background: white; border-top: 1px solid var(--border); padding: 10px 20px 28px; z-index: 100; }
+  .progress-bg { height: 5px; background: #ECECEC; border-radius: 3px; overflow: hidden; margin-bottom: 5px; }
+  .progress-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.3s; width: 0%; }
+  .progress-txt { font-size: 12px; color: var(--text-light); text-align: center; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Morning Mobility</h1>
+  <p>10–15 min daily routine</p>
+  <div class="header-pills"><span>10 moves</span><span>Full body</span></div>
+</header>
+
+<div class="wake-lock-bar">
+  <span>Keep screen on</span>
+  <div class="toggle on" id="wakeLockToggle" onclick="toggleWakeLock()"></div>
+</div>
+
+<!-- ===== WARM-UP ===== -->
+<div class="section-label"><div class="dot" style="background:var(--warmup)"></div> Warm-Up · 2 min</div>
+
+<!-- CAT-COW -->
+<div class="card" id="card-0" data-seconds="60">
+  <div class="card-top">
+    <h3>Cat-Cow</h3>
+    <span class="time-pill" style="background:var(--warmup-bg);color:var(--warmup);">60s</span>
+  </div>
+  <div class="illust">
+    <!-- COW POSE -->
+    <svg viewBox="0 0 160 130" width="150" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <text x="80" y="12" class="pose-label" style="fill:var(--warmup)">Cow · inhale</text>
+      <!-- body silhouette -->
+      <g fill="#E8733A" opacity="0.18">
+        <ellipse cx="80" cy="68" rx="42" ry="14"/>
+      </g>
+      <g stroke="#E8733A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+        <!-- arms -->
+        <path d="M50 90 L50 62"/>
+        <path d="M110 90 L110 62"/>
+        <!-- legs -->
+        <path d="M50 90 L50 108"/>
+        <path d="M110 90 L110 108"/>
+        <!-- spine - arched down (cow) -->
+        <path d="M50 62 Q80 48 110 62"/>
+        <!-- head looking up -->
+        <circle cx="118" cy="52" r="10"/>
+        <path d="M126 48 L132 42"/>
+      </g>
+      <!-- arrow showing belly dropping -->
+      <path d="M80 68 L80 80" stroke="#E8733A" stroke-width="1.5" stroke-dasharray="3 2" marker-end="url(#aD)"/>
+      <text x="80" y="94" font-size="9" fill="#E8733A" text-anchor="middle" font-weight="500">belly drops</text>
+      <defs><marker id="aD" viewBox="0 0 6 6" refX="3" refY="3" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L6 3 L0 6z" fill="#E8733A"/></marker></defs>
+    </svg>
+    <!-- CAT POSE -->
+    <svg viewBox="0 0 160 130" width="150" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <text x="80" y="12" class="pose-label" style="fill:var(--warmup)">Cat · exhale</text>
+      <g fill="#E8733A" opacity="0.18">
+        <ellipse cx="80" cy="60" rx="42" ry="14"/>
+      </g>
+      <g stroke="#E8733A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+        <path d="M50 82 L50 58"/>
+        <path d="M110 82 L110 58"/>
+        <path d="M50 82 L50 100"/>
+        <path d="M110 82 L110 100"/>
+        <!-- spine - arched UP (cat) -->
+        <path d="M50 58 Q80 38 110 58"/>
+        <!-- head tucked down -->
+        <circle cx="118" cy="66" r="10"/>
+        <path d="M124 72 L128 80"/>
+      </g>
+      <!-- arrow showing back rounding up -->
+      <path d="M80 52 L80 38" stroke="#E8733A" stroke-width="1.5" stroke-dasharray="3 2" marker-end="url(#aU)"/>
+      <text x="80" y="32" font-size="9" fill="#E8733A" text-anchor="middle" font-weight="500">back rounds up</text>
+      <defs><marker id="aU" viewBox="0 0 6 6" refX="3" refY="3" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L6 3 L0 6z" fill="#E8733A"/></marker></defs>
+    </svg>
+  </div>
+  <div class="form-cues">
+    <div class="cue"><div class="cue-num" style="background:var(--warmup)">1</div><div class="cue-text"><strong>All fours</strong> — wrists under shoulders, knees under hips</div></div>
+    <div class="cue"><div class="cue-num" style="background:var(--warmup)">2</div><div class="cue-text"><strong>Inhale:</strong> Drop belly, lift chest and gaze up</div></div>
+    <div class="cue"><div class="cue-num" style="background:var(--warmup)">3</div><div class="cue-text"><strong>Exhale:</strong> Round back to ceiling, tuck chin</div></div>
+  </div>
+  <div class="key-point" style="background:var(--warmup-bg);color:#C45E2A;">
+    <span class="kp-icon">💡</span> Move slowly — let each rep get bigger than the last
+  </div>
+  <div class="tags"><span class="tag" style="background:var(--warmup-bg);color:var(--warmup);">Spine</span></div>
+  <div class="timer-bar">
+    <button class="timer-btn" style="background:var(--warmup-bg);color:var(--warmup);" onclick="toggleTimer(0)">▶</button>
+    <div class="timer-display"><div class="timer-fill" id="fill-0" style="background:var(--warmup);"></div></div>
+    <span class="timer-label" id="label-0">1:00</span>
+  </div>
+  <div class="done-row" onclick="toggleCheck(this,event)"><input type="checkbox"><label>Done</label></div>
+</div>
+
+<!-- WORLD'S GREATEST STRETCH -->
+<div class="card" id="card-1" data-seconds="60">
+  <div class="card-top">
+    <h3>World's Greatest Stretch</h3>
+    <span class="time-pill" style="background:var(--warmup-bg);color:var(--warmup);">60s</span>
+  </div>
+  <div class="illust">
+    <svg viewBox="0 0 240 150" width="260" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <g stroke="#E8733A" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+        <!-- back leg extended -->
+        <path d="M38 128 L72 98"/>
+        <path d="M72 98 L112 78"/>
+        <!-- front leg bent, foot flat -->
+        <path d="M112 78 L140 108"/>
+        <path d="M140 108 L140 128"/>
+        <!-- torso upright -->
+        <path d="M112 78 L120 42"/>
+        <!-- head -->
+        <circle cx="122" cy="30" r="11"/>
+        <!-- bottom arm to floor -->
+        <path d="M116 58 L130 90"/>
+        <!-- top arm reaching up -->
+        <path d="M118 50 L102 18"/>
+      </g>
+      <!-- highlight: front hip area -->
+      <ellipse cx="112" cy="82" rx="14" ry="8" fill="#E8733A" opacity="0.12"/>
+      <!-- rotation arc -->
+      <path d="M100 22 Q88 35 98 50" stroke="#E8733A" stroke-width="1.5" stroke-dasharray="4 3" fill="none"/>
+      <text x="78" y="42" font-size="10" fill="#E8733A" font-weight="500">rotate</text>
+      <text x="78" y="52" font-size="10" fill="#E8733A" font-weight="500">open</text>
+      <!-- floor -->
+      <line x1="20" y1="130" x2="220" y2="130" stroke="#ddd" stroke-width="1"/>
+      <!-- label -->
+      <text x="170" y="60" font-size="9" fill="#E8733A" font-weight="500">arm to ceiling,</text>
+      <text x="170" y="71" font-size="9" fill="#E8733A" font-weight="500">eyes follow hand</text>
+      <text x="30" y="118" font-size="9" fill="#E8733A" font-weight="500">back knee</text>
+      <text x="30" y="128" font-size="9" fill="#E8733A" font-weight="500">on ground</text>
+    </svg>
+  </div>
+  <div class="form-cues">
+    <div class="cue"><div class="cue-num" style="background:var(--warmup)">1</div><div class="cue-text"><strong>Lunge forward</strong> — step foot outside same-side hand</div></div>
+    <div class="cue"><div class="cue-num" style="background:var(--warmup)">2</div><div class="cue-text"><strong>Drop back knee</strong> to the ground</div></div>
+    <div class="cue"><div class="cue-num" style="background:var(--warmup)">3</div><div class="cue-text"><strong>Rotate open</strong> — reach top arm to ceiling, eyes follow</div></div>
+  </div>
+  <div class="key-point" style="background:var(--warmup-bg);color:#C45E2A;">
+    <span class="kp-icon">💡</span> 30 sec per side — hits hips, T-spine, hamstrings, and ankles all at once
+  </div>
+  <div class="tags">
+    <span class="tag" style="background:var(--warmup-bg);color:var(--warmup);">Hips</span>
+    <span class="tag" style="background:var(--warmup-bg);color:var(--warmup);">T-Spine</span>
+  </div>
+  <div class="timer-bar">
+    <button class="timer-btn" style="background:var(--warmup-bg);color:var(--warmup);" onclick="toggleTimer(1)">▶</button>
+    <div class="timer-display"><div class="timer-fill" id="fill-1" style="background:var(--warmup);"></div></div>
+    <span class="timer-label" id="label-1">1:00</span>
+  </div>
+  <div class="done-row" onclick="toggleCheck(this,event)"><input type="checkbox"><label>Done</label></div>
+</div>
+
+<!-- ===== LOWER BODY ===== -->
+<div class="section-label"><div class="dot" style="background:var(--lower)"></div> Lower Body · 5 min</div>
+
+<!-- 90/90 HIP SWITCH -->
+<div class="card" id="card-2" data-seconds="60">
+  <div class="card-top">
+    <h3>90/90 Hip Switch</h3>
+    <span class="time-pill" style="background:var(--lower-bg);color:var(--lower);">60s</span>
+  </div>
+  <div class="illust">
+    <svg viewBox="0 0 150 130" width="140" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <text x="75" y="12" class="pose-label" style="fill:var(--lower)">Side A</text>
+      <g stroke="#4A7C6F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+        <!-- torso upright -->
+        <path d="M75 80 L75 42"/>
+        <circle cx="75" cy="30" r="10"/>
+        <!-- front leg: thigh forward, shin to side -->
+        <path d="M75 80 L45 95"/>
+        <path d="M45 95 L30 118"/>
+        <!-- back leg: thigh to side, shin back -->
+        <path d="M75 80 L105 95"/>
+        <path d="M105 95 L118 75"/>
+      </g>
+      <!-- 90° angle markers -->
+      <path d="M50 89 L50 95 L45 95" stroke="#4A7C6F" stroke-width="1" fill="none"/>
+      <path d="M100 95 L105 95 L105 89" stroke="#4A7C6F" stroke-width="1" fill="none"/>
+      <text x="75" y="128" font-size="9" fill="#4A7C6F" text-anchor="middle" font-weight="500">both knees at 90°</text>
+    </svg>
+    <!-- Arrow between -->
+    <svg viewBox="0 0 40 130" width="30" fill="none">
+      <path d="M12 55 L28 55" stroke="#ccc" stroke-width="2" marker-end="url(#sw1)"/>
+      <path d="M28 65 L12 65" stroke="#ccc" stroke-width="2" marker-end="url(#sw2)"/>
+      <defs>
+        <marker id="sw1" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L6 3L0 6z" fill="#ccc"/></marker>
+        <marker id="sw2" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L6 3L0 6z" fill="#ccc"/></marker>
+      </defs>
+    </svg>
+    <svg viewBox="0 0 150 130" width="140" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <text x="75" y="12" class="pose-label" style="fill:var(--lower)">Side B</text>
+      <g stroke="#4A7C6F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+        <path d="M75 80 L75 42"/>
+        <circle cx="75" cy="30" r="10"/>
+        <!-- mirrored legs -->
+        <path d="M75 80 L105 95"/>
+        <path d="M105 95 L120 118"/>
+        <path d="M75 80 L45 95"/>
+        <path d="M45 95 L32 75"/>
+      </g>
+      <path d="M100 89 L100 95 L105 95" stroke="#4A7C6F" stroke-width="1" fill="none"/>
+      <path d="M50 95 L45 95 L45 89" stroke="#4A7C6F" stroke-width="1" fill="none"/>
+      <text x="75" y="128" font-size="9" fill="#4A7C6F" text-anchor="middle" font-weight="500">rotate to switch</text>
+    </svg>
+  </div>
+  <div class="form-cues">
+    <div class="cue"><div class="cue-num" style="background:var(--lower)">1</div><div class="cue-text"><strong>Seated</strong> — both knees bent at ~90°, one in front one behind</div></div>
+    <div class="cue"><div class="cue-num" style="background:var(--lower)">2</div><div class="cue-text"><strong>Windshield-wiper</strong> your legs to switch sides, pause each way</div></div>
+    <div class="cue"><div class="cue-num" style="background:var(--lower)">3</div><div class="cue-text"><strong>Stay tall</strong> — chest up, don't lean back</div></div>
+  </div>
+  <div class="key-point" style="background:var(--lower-bg);color:#3A6359;">
+    <span class="kp-icon">💡</span> Don't rush — pause a few breaths in each position
+  </div>
+  <div class="tags"><span class="tag" style="background:var(--lower-bg);color:var(--lower);">Hip Rotation</span></div>
+  <div class="timer-bar">
+    <button class="timer-btn" style="background:var(--lower-bg);color:var(--lower);" onclick="toggleTimer(2)">▶</button>
+    <div class="timer-display"><div class="timer-fill" id="fill-2" style="background:var(--lower);"></div></div>
+    <span class="timer-label" id="label-2">1:00</span>
+  </div>
+  <div class="done-row" onclick="toggleCheck(this,event)"><input type="checkbox"><label>Done</label></div>
+</div>
+
+<!-- HIP FLEXOR STRETCH -->
+<div class="card" id="card-3" data-seconds="90">
+  <div class="card-top">
+    <h3>Hip Flexor Stretch</h3>
+    <span class="time-pill" style="background:var(--lower-bg);color:var(--lower);">90s</span>
+  </div>
+  <div class="illust">
+    <svg viewBox="0 0 260 160" width="280" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <g stroke="#4A7C6F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+        <!-- back shin on ground -->
+        <path d="M60 140 L90 100"/>
+        <!-- back thigh -->
+        <path d="M90 100 L120 85"/>
+        <!-- front thigh -->
+        <path d="M120 85 L152 110"/>
+        <!-- front shin vertical -->
+        <path d="M152 110 L152 140"/>
+        <!-- torso upright -->
+        <path d="M120 85 L125 35"/>
+        <!-- head -->
+        <circle cx="126" cy="22" r="11"/>
+        <!-- hands on hip -->
+        <path d="M124 52 L110 65"/>
+        <path d="M124 52 L138 65"/>
+      </g>
+      <!-- HIGHLIGHT: stretch zone on front of back hip -->
+      <ellipse cx="105" cy="90" rx="18" ry="10" fill="#4A7C6F" opacity="0.15" transform="rotate(-15 105 90)"/>
+      <text x="78" y="82" font-size="9" fill="#4A7C6F" font-weight="600">stretch</text>
+      <text x="78" y="92" font-size="9" fill="#4A7C6F" font-weight="600">here</text>
+      <!-- pelvic tuck annotation -->
+      <path d="M138 78 Q145 72 142 62" stroke="#4A7C6F" stroke-width="1.5" stroke-dasharray="3 2" fill="none" marker-end="url(#hfA)"/>
+      <text x="150" y="65" font-size="9" fill="#4A7C6F" font-weight="500">tuck pelvis</text>
+      <text x="150" y="75" font-size="9" fill="#4A7C6F" font-weight="500">under</text>
+      <!-- glute squeeze annotation -->
+      <text x="155" y="105" font-size="9" fill="#4A7C6F" font-weight="500">squeeze</text>
+      <text x="155" y="115" font-size="9" fill="#4A7C6F" font-weight="500">back glute</text>
+      <!-- floor -->
+      <line x1="30" y1="142" x2="230" y2="142" stroke="#ddd" stroke-width="1"/>
+      <defs><marker id="hfA" viewBox="0 0 6 6" refX="3" refY="3" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L6 3L0 6z" fill="#4A7C6F"/></marker></defs>
+    </svg>
+  </div>
+  <div class="form-cues">
+    <div class="cue"><div class="cue-num" style="background:var(--lower)">1</div><div class="cue-text"><strong>Half-kneeling</strong> — one foot forward, back knee on ground</div></div>
+    <div class="cue"><div class="cue-num" style="background:var(--lower)">2</div><div class="cue-text"><strong>Tuck pelvis</strong> — belt buckle up toward chin (this creates the stretch)</div></div>
+    <div class="cue"><div class="cue-num" style="background:var(--lower)">3</div><div class="cue-text"><strong>Squeeze back glute</strong> and lean gently forward to deepen</div></div>
+  </div>
+  <div class="key-point" style="background:var(--lower-bg);color:#3A6359;">
+    <span class="kp-icon">⭐</span> 45 sec per side — #1 move for undoing sitting tightness
+  </div>
+  <div class="tags">
+    <span class="tag" style="background:var(--lower-bg);color:var(--lower);">Hip Flexors</span>
+    <span class="tag" style="background:var(--lower-bg);color:var(--lower);">Posture</span>
+  </div>
+  <div class="timer-bar">
+    <button class="timer-btn" style="background:var(--lower-bg);color:var(--lower);" onclick="toggleTimer(3)">▶</button>
+    <div class="timer-display"><div class="timer-fill" id="fill-3" style="background:var(--lower);"></div></div>
+    <span class="timer-label" id="label-3">1:30</span>
+  </div>
+  <div class="done-row" onclick="toggleCheck(this,event)"><input type="checkbox"><label>Done</label></div>
+</div>
+
+<!-- DEEP SQUAT HOLD -->
+<div class="card" id="card-4" data-seconds="60">
+  <div class="card-top">
+    <h3>Deep Squat Hold</h3>
+    <span class="time-pill" style="background:var(--lower-bg);color:var(--lower);">60s</span>
+  </div>
+  <div class="illust">
+    <svg viewBox="0 0 240 160" width="260" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <g stroke="#4A7C6F" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+        <!-- feet wide -->
+        <path d="M80 145 L88 118"/>
+        <path d="M160 145 L152 118"/>
+        <!-- thighs -->
+        <path d="M88 118 L108 98"/>
+        <path d="M152 118 L132 98"/>
+        <!-- torso -->
+        <path d="M120 98 L120 55"/>
+        <!-- head -->
+        <circle cx="120" cy="42" r="11"/>
+        <!-- arms: elbows pressing knees -->
+        <path d="M120 68 L96 92"/>
+        <path d="M120 68 L144 92"/>
+        <!-- hands together -->
+        <circle cx="120" cy="82" r="4" fill="#4A7C6F" opacity="0.3"/>
+      </g>
+      <!-- elbow push arrows -->
+      <path d="M92 94 L80 100" stroke="#4A7C6F" stroke-width="2" marker-end="url(#sqA)"/>
+      <path d="M148 94 L160 100" stroke="#4A7C6F" stroke-width="2" marker-end="url(#sqA)"/>
+      <text x="52" y="106" font-size="9" fill="#4A7C6F" font-weight="600">elbows</text>
+      <text x="52" y="116" font-size="9" fill="#4A7C6F" font-weight="600">push out</text>
+      <!-- chest up arrow -->
+      <path d="M135 55 L135 42" stroke="#4A7C6F" stroke-width="1.5" stroke-dasharray="3 2" marker-end="url(#sqA)"/>
+      <text x="142" y="48" font-size="9" fill="#4A7C6F" font-weight="500">chest</text>
+      <text x="142" y="58" font-size="9" fill="#4A7C6F" font-weight="500">tall</text>
+      <!-- heels note -->
+      <text x="75" y="155" font-size="9" fill="#999" text-anchor="middle">heels down</text>
+      <text x="165" y="155" font-size="9" fill="#999" text-anchor="middle">heels down</text>
+      <!-- floor -->
+      <line x1="50" y1="148" x2="190" y2="148" stroke="#ddd" stroke-width="1"/>
+      <defs><marker id="sqA" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L6 3L0 6z" fill="#4A7C6F"/></marker></defs>
+    </svg>
+  </div>
+  <div class="form-cues">
+    <div class="cue"><div class="cue-num" style="background:var(--lower)">1</div><div class="cue-text"><strong>Wide stance</strong> — feet wider than shoulders, toes slightly out</div></div>
+    <div class="cue"><div class="cue-num" style="background:var(--lower)">2</div><div class="cue-text"><strong>Sink as deep as you can</strong> — elbows press knees outward</div></div>
+    <div class="cue"><div class="cue-num" style="background:var(--lower)">3</div><div class="cue-text"><strong>Hands together</strong> in prayer, chest stays tall</div></div>
+  </div>
+  <div class="key-point" style="background:var(--lower-bg);color:#3A6359;">
+    <span class="kp-icon">💡</span> Heels lifting? Roll up a towel under them — totally normal, it improves over time
+  </div>
+  <div class="tags">
+    <span class="tag" style="background:var(--lower-bg);color:var(--lower);">Hips</span>
+    <span class="tag" style="background:var(--lower-bg);color:var(--lower);">Ankles</span>
+  </div>
+  <div class="timer-bar">
+    <button class="timer-btn" style="background:var(--lower-bg);color:var(--lower);" onclick="toggleTimer(4)">▶</button>
+    <div class="timer-display"><div class="timer-fill" id="fill-4" style="background:var(--lower);"></div></div>
+    <span class="timer-label" id="label-4">1:00</span>
+  </div>
+  <div class="done-row" onclick="toggleCheck(this,event)"><input type="checkbox"><label>Done</label></div>
+</div>
+
+<!-- ===== UPPER BODY & POSTURE ===== -->
+<div class="section-label"><div class="dot" style="background:var(--upper)"></div> Upper Body & Posture · 5 min</div>
+
+<!-- OPEN BOOK -->
+<div class="card" id="card-5" data-seconds="60">
+  <div class="card-top">
+    <h3>Open Book Rotations</h3>
+    <span class="time-pill" style="background:var(--upper-bg);color:var(--upper);">60s</span>
+  </div>
+  <div class="illust">
+    <svg viewBox="0 0 260 140" width="280" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <g stroke="#5B6AAF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+        <!-- lying on side - body -->
+        <circle cx="70" cy="52" r="10"/>
+        <!-- torso -->
+        <path d="M80 55 L115 72"/>
+        <!-- bent legs (stacked) -->
+        <path d="M115 72 L135 58"/>
+        <path d="M135 58 L152 70"/>
+        <!-- bottom arm forward -->
+        <path d="M78 58 L60 70"/>
+        <!-- top arm - showing rotation arc -->
+        <path d="M85 60 L58 82"/>
+      </g>
+      <!-- Rotation ARC showing the movement -->
+      <path d="M58 82 Q30 60 45 30 Q55 15 78 22" stroke="#5B6AAF" stroke-width="2" stroke-dasharray="6 4" fill="none" opacity="0.5"/>
+      <!-- Ghost arm at end position -->
+      <path d="M85 60 L98 30" stroke="#5B6AAF" stroke-width="2.5" stroke-linecap="round" opacity="0.3"/>
+      <!-- arc arrow -->
+      <text x="22" y="55" font-size="10" fill="#5B6AAF" font-weight="600">open</text>
+      <text x="22" y="66" font-size="10" fill="#5B6AAF" font-weight="600">arm</text>
+      <text x="22" y="77" font-size="10" fill="#5B6AAF" font-weight="600">over</text>
+      <!-- knees locked annotation -->
+      <path d="M155 65 L175 65" stroke="#5B6AAF" stroke-width="1" stroke-dasharray="2 2"/>
+      <text x="178" y="62" font-size="9" fill="#5B6AAF" font-weight="500">knees stay</text>
+      <text x="178" y="72" font-size="9" fill="#5B6AAF" font-weight="500">stacked</text>
+      <!-- eyes annotation -->
+      <text x="178" y="42" font-size="9" fill="#5B6AAF" font-weight="500">eyes follow</text>
+      <text x="178" y="52" font-size="9" fill="#5B6AAF" font-weight="500">hand</text>
+      <!-- floor -->
+      <line x1="20" y1="110" x2="230" y2="110" stroke="#ddd" stroke-width="1"/>
+      <text x="125" y="125" font-size="9" fill="#999" text-anchor="middle">30 sec per side · rotate through upper back only</text>
+    </svg>
+  </div>
+  <div class="form-cues">
+    <div class="cue"><div class="cue-num" style="background:var(--upper)">1</div><div class="cue-text"><strong>Side-lying</strong> — knees stacked and bent at 90°</div></div>
+    <div class="cue"><div class="cue-num" style="background:var(--upper)">2</div><div class="cue-text"><strong>Open top arm</strong> like a book page — eyes follow hand</div></div>
+    <div class="cue"><div class="cue-num" style="background:var(--upper)">3</div><div class="cue-text"><strong>Knees stay together</strong> — rotation only through upper back</div></div>
+  </div>
+  <div class="tags">
+    <span class="tag" style="background:var(--upper-bg);color:var(--upper);">T-Spine</span>
+    <span class="tag" style="background:var(--upper-bg);color:var(--upper);">Posture</span>
+  </div>
+  <div class="timer-bar">
+    <button class="timer-btn" style="background:var(--upper-bg);color:var(--upper);" onclick="toggleTimer(5)">▶</button>
+    <div class="timer-display"><div class="timer-fill" id="fill-5" style="background:var(--upper);"></div></div>
+    <span class="timer-label" id="label-5">1:00</span>
+  </div>
+  <div class="done-row" onclick="toggleCheck(this,event)"><input type="checkbox"><label>Done</label></div>
+</div>
+
+<!-- WALL ANGELS -->
+<div class="card" id="card-6" data-seconds="60">
+  <div class="card-top">
+    <h3>Wall Angels</h3>
+    <span class="time-pill" style="background:var(--upper-bg);color:var(--upper);">60s</span>
+  </div>
+  <div class="illust">
+    <svg viewBox="0 0 220 165" width="240" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- Wall -->
+      <rect x="48" y="8" width="6" height="142" rx="3" fill="#D8D8D8"/>
+      <!-- Person A: arms at 90° -->
+      <g stroke="#5B6AAF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+        <circle cx="66" cy="28" r="10"/>
+        <path d="M64 38 L60 85"/>
+        <path d="M60 85 L65 115"/>
+        <path d="M65 115 L65 145"/>
+        <path d="M60 85 L55 115"/>
+        <path d="M55 115 L55 145"/>
+        <!-- Arms in goal post: elbows at 90° -->
+        <path d="M64 50 L56 42"/>
+        <path d="M56 42 L56 25"/>
+        <path d="M64 50 L56 58"/>
+      </g>
+      <!-- Ghost: arms extended up -->
+      <g stroke="#5B6AAF" stroke-width="2.5" stroke-linecap="round" opacity="0.25" fill="none">
+        <path d="M64 50 L56 38"/>
+        <path d="M56 38 L56 12"/>
+      </g>
+      <!-- Slide arrow -->
+      <path d="M46 25 L46 12" stroke="#5B6AAF" stroke-width="1.5" marker-end="url(#wA)"/>
+      <path d="M46 25 L46 36" stroke="#5B6AAF" stroke-width="1.5" marker-end="url(#wA)"/>
+      <!-- Contact points -->
+      <text x="90" y="26" font-size="9" fill="#5B6AAF" font-weight="500">head on wall</text>
+      <text x="90" y="44" font-size="9" fill="#5B6AAF" font-weight="500">wrists on wall</text>
+      <text x="90" y="60" font-size="9" fill="#5B6AAF" font-weight="500">elbows on wall</text>
+      <text x="90" y="82" font-size="9" fill="#5B6AAF" font-weight="500">back flat on wall</text>
+      <!-- little dots showing contact -->
+      <circle cx="56" cy="25" r="3" fill="#5B6AAF" opacity="0.3"/>
+      <circle cx="56" cy="42" r="3" fill="#5B6AAF" opacity="0.3"/>
+      <circle cx="58" cy="75" r="3" fill="#5B6AAF" opacity="0.3"/>
+      <!-- floor -->
+      <line x1="30" y1="148" x2="200" y2="148" stroke="#ddd" stroke-width="1"/>
+      <text x="115" y="162" font-size="9" fill="#999" text-anchor="middle">10 slow reps · harder than they look</text>
+      <defs><marker id="wA" viewBox="0 0 6 6" refX="3" refY="3" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L6 3L0 6z" fill="#5B6AAF"/></marker></defs>
+    </svg>
+  </div>
+  <div class="form-cues">
+    <div class="cue"><div class="cue-num" style="background:var(--upper)">1</div><div class="cue-text"><strong>Back flat on wall</strong> — feet ~6 inches out, slight knee bend</div></div>
+    <div class="cue"><div class="cue-num" style="background:var(--upper)">2</div><div class="cue-text"><strong>Goal post arms</strong> — elbows 90°, wrists + elbows touching wall</div></div>
+    <div class="cue"><div class="cue-num" style="background:var(--upper)">3</div><div class="cue-text"><strong>Slide arms up</strong> overhead and back down — keep wall contact</div></div>
+  </div>
+  <div class="key-point" style="background:var(--upper-bg);color:#4A5A9A;">
+    <span class="kp-icon">⭐</span> If wrists peel off the wall, you've found your tight spots — that's where the work is
+  </div>
+  <div class="tags">
+    <span class="tag" style="background:var(--upper-bg);color:var(--upper);">Shoulders</span>
+    <span class="tag" style="background:var(--upper-bg);color:var(--upper);">Posture</span>
+  </div>
+  <div class="timer-bar">
+    <button class="timer-btn" style="background:var(--upper-bg);color:var(--upper);" onclick="toggleTimer(6)">▶</button>
+    <div class="timer-display"><div class="timer-fill" id="fill-6" style="background:var(--upper);"></div></div>
+    <span class="timer-label" id="label-6">1:00</span>
+  </div>
+  <div class="done-row" onclick="toggleCheck(this,event)"><input type="checkbox"><label>Done</label></div>
+</div>
+
+<!-- THREAD THE NEEDLE -->
+<div class="card" id="card-7" data-seconds="60">
+  <div class="card-top">
+    <h3>Thread the Needle</h3>
+    <span class="time-pill" style="background:var(--upper-bg);color:var(--upper);">60s</span>
+  </div>
+  <div class="illust">
+    <svg viewBox="0 0 260 140" width="280" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <g stroke="#5B6AAF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+        <!-- knees on ground -->
+        <path d="M170 100 L170 125"/>
+        <path d="M185 100 L185 125"/>
+        <!-- thighs -->
+        <path d="M170 100 L155 78"/>
+        <path d="M185 100 L155 78"/>
+        <!-- torso twisted, shoulder toward ground -->
+        <path d="M155 78 L105 88"/>
+        <!-- head resting on ground -->
+        <circle cx="95" cy="95" r="10"/>
+        <!-- threading arm - going under -->
+        <path d="M120 82 L78 100"/>
+        <path d="M78 100 L58 96"/>
+        <!-- support arm -->
+        <path d="M135 82 L135 105"/>
+      </g>
+      <!-- Highlight: stretch zone between shoulder blades -->
+      <ellipse cx="118" cy="82" rx="18" ry="8" fill="#5B6AAF" opacity="0.12" transform="rotate(-5 118 82)"/>
+      <text x="100" y="68" font-size="9" fill="#5B6AAF" font-weight="600">stretch between</text>
+      <text x="100" y="78" font-size="9" fill="#5B6AAF" font-weight="600">shoulder blades</text>
+      <!-- threading direction arrow -->
+      <path d="M72 92 L55 88" stroke="#5B6AAF" stroke-width="1.5" stroke-dasharray="3 2" marker-end="url(#thA)"/>
+      <text x="32" y="84" font-size="9" fill="#5B6AAF" font-weight="500">thread</text>
+      <text x="32" y="94" font-size="9" fill="#5B6AAF" font-weight="500">under</text>
+      <!-- temple on floor -->
+      <text x="68" y="118" font-size="9" fill="#999">temple rests on floor</text>
+      <!-- floor -->
+      <line x1="20" y1="128" x2="230" y2="128" stroke="#ddd" stroke-width="1"/>
+      <defs><marker id="thA" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L6 3L0 6z" fill="#5B6AAF"/></marker></defs>
+    </svg>
+  </div>
+  <div class="form-cues">
+    <div class="cue"><div class="cue-num" style="background:var(--upper)">1</div><div class="cue-text"><strong>Start on all fours</strong> with a neutral spine</div></div>
+    <div class="cue"><div class="cue-num" style="background:var(--upper)">2</div><div class="cue-text"><strong>Thread one arm</strong> under the other along the floor</div></div>
+    <div class="cue"><div class="cue-num" style="background:var(--upper)">3</div><div class="cue-text"><strong>Lower shoulder + temple</strong> to the floor, hold and breathe deep</div></div>
+  </div>
+  <div class="key-point" style="background:var(--upper-bg);color:#4A5A9A;">
+    <span class="kp-icon">💡</span> 30 sec per side — feel the stretch deep between your shoulder blades
+  </div>
+  <div class="tags">
+    <span class="tag" style="background:var(--upper-bg);color:var(--upper);">T-Spine</span>
+    <span class="tag" style="background:var(--upper-bg);color:var(--upper);">Shoulders</span>
+  </div>
+  <div class="timer-bar">
+    <button class="timer-btn" style="background:var(--upper-bg);color:var(--upper);" onclick="toggleTimer(7)">▶</button>
+    <div class="timer-display"><div class="timer-fill" id="fill-7" style="background:var(--upper);"></div></div>
+    <span class="timer-label" id="label-7">1:00</span>
+  </div>
+  <div class="done-row" onclick="toggleCheck(this,event)"><input type="checkbox"><label>Done</label></div>
+</div>
+
+<!-- ===== COOL-DOWN ===== -->
+<div class="section-label"><div class="dot" style="background:var(--cool)"></div> Cool-Down · 2 min</div>
+
+<!-- FORWARD FOLD -->
+<div class="card" id="card-8" data-seconds="45">
+  <div class="card-top">
+    <h3>Forward Fold Ragdoll</h3>
+    <span class="time-pill" style="background:var(--cool-bg);color:var(--cool);">45s</span>
+  </div>
+  <div class="illust">
+    <svg viewBox="0 0 200 155" width="210" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <g stroke="#8B6BAF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+        <!-- feet -->
+        <path d="M90 145 L92 105"/>
+        <path d="M110 145 L108 105"/>
+        <!-- torso folded over -->
+        <path d="M100 105 L96 58"/>
+        <!-- head hanging -->
+        <circle cx="94" cy="46" r="10"/>
+        <!-- arms dangling, grabbing opposite elbows -->
+        <path d="M96 68 L82 52"/>
+        <path d="M96 68 L110 52"/>
+        <path d="M82 52 L96 42"/>
+        <path d="M110 52 L96 42"/>
+      </g>
+      <!-- sway arrows -->
+      <path d="M72 55 L62 55" stroke="#8B6BAF" stroke-width="1.5" marker-end="url(#ffA)"/>
+      <path d="M118 55 L128 55" stroke="#8B6BAF" stroke-width="1.5" marker-end="url(#ffA)"/>
+      <text x="46" y="50" font-size="9" fill="#8B6BAF" font-weight="500">sway</text>
+      <text x="132" y="50" font-size="9" fill="#8B6BAF" font-weight="500">sway</text>
+      <!-- gravity annotation -->
+      <text x="130" y="76" font-size="9" fill="#8B6BAF" font-weight="500">let head</text>
+      <text x="130" y="86" font-size="9" fill="#8B6BAF" font-weight="500">hang heavy</text>
+      <text x="130" y="110" font-size="9" fill="#8B6BAF" font-weight="500">soft knees</text>
+      <!-- floor -->
+      <line x1="50" y1="148" x2="170" y2="148" stroke="#ddd" stroke-width="1"/>
+      <defs><marker id="ffA" viewBox="0 0 6 6" refX="5" refY="3" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L6 3L0 6z" fill="#8B6BAF"/></marker></defs>
+    </svg>
+  </div>
+  <div class="form-cues">
+    <div class="cue"><div class="cue-num" style="background:var(--cool)">1</div><div class="cue-text"><strong>Feet hip-width,</strong> generous bend in your knees</div></div>
+    <div class="cue"><div class="cue-num" style="background:var(--cool)">2</div><div class="cue-text"><strong>Fold forward,</strong> grab opposite elbows, head hangs completely heavy</div></div>
+    <div class="cue"><div class="cue-num" style="background:var(--cool)">3</div><div class="cue-text"><strong>Sway gently</strong> side to side — let gravity do all the work</div></div>
+  </div>
+  <div class="tags">
+    <span class="tag" style="background:var(--cool-bg);color:var(--cool);">Spine</span>
+    <span class="tag" style="background:var(--cool-bg);color:var(--cool);">Hamstrings</span>
+  </div>
+  <div class="timer-bar">
+    <button class="timer-btn" style="background:var(--cool-bg);color:var(--cool);" onclick="toggleTimer(8)">▶</button>
+    <div class="timer-display"><div class="timer-fill" id="fill-8" style="background:var(--cool);"></div></div>
+    <span class="timer-label" id="label-8">0:45</span>
+  </div>
+  <div class="done-row" onclick="toggleCheck(this,event)"><input type="checkbox"><label>Done</label></div>
+</div>
+
+<!-- STANDING SIDE BEND -->
+<div class="card" id="card-9" data-seconds="45">
+  <div class="card-top">
+    <h3>Standing Side Bend</h3>
+    <span class="time-pill" style="background:var(--cool-bg);color:var(--cool);">45s</span>
+  </div>
+  <div class="illust">
+    <svg viewBox="0 0 200 160" width="210" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <g stroke="#8B6BAF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+        <!-- legs -->
+        <path d="M88 148 L92 100"/>
+        <path d="M112 148 L108 100"/>
+        <!-- torso bending to right -->
+        <path d="M100 100 Q115 68 125 38"/>
+        <!-- head -->
+        <circle cx="130" cy="26" r="10"/>
+        <!-- reaching arm (follows the bend) -->
+        <path d="M112 75 Q125 50 138 22"/>
+        <!-- resting arm -->
+        <path d="M100 75 L115 95"/>
+      </g>
+      <!-- Stretch highlight along left side -->
+      <path d="M88 45 Q82 65 88 90" stroke="#8B6BAF" stroke-width="8" stroke-linecap="round" opacity="0.1"/>
+      <text x="52" y="65" font-size="9" fill="#8B6BAF" font-weight="600">stretch</text>
+      <text x="52" y="75" font-size="9" fill="#8B6BAF" font-weight="600">along</text>
+      <text x="52" y="85" font-size="9" fill="#8B6BAF" font-weight="600">side body</text>
+      <!-- breathe annotation -->
+      <text x="140" y="55" font-size="9" fill="#8B6BAF" font-weight="500">breathe</text>
+      <text x="140" y="65" font-size="9" fill="#8B6BAF" font-weight="500">into it</text>
+      <!-- floor -->
+      <line x1="50" y1="150" x2="170" y2="150" stroke="#ddd" stroke-width="1"/>
+      <text x="100" y="160" font-size="9" fill="#999" text-anchor="middle">switch halfway</text>
+    </svg>
+  </div>
+  <div class="form-cues">
+    <div class="cue"><div class="cue-num" style="background:var(--cool)">1</div><div class="cue-text"><strong>Stand tall,</strong> feet hip-width apart</div></div>
+    <div class="cue"><div class="cue-num" style="background:var(--cool)">2</div><div class="cue-text"><strong>Reach one arm overhead</strong> and lean to the opposite side</div></div>
+    <div class="cue"><div class="cue-num" style="background:var(--cool)">3</div><div class="cue-text"><strong>Breathe into the stretch</strong> along your side body — switch halfway</div></div>
+  </div>
+  <div class="tags"><span class="tag" style="background:var(--cool-bg);color:var(--cool);">Lateral Chain</span></div>
+  <div class="timer-bar">
+    <button class="timer-btn" style="background:var(--cool-bg);color:var(--cool);" onclick="toggleTimer(9)">▶</button>
+    <div class="timer-display"><div class="timer-fill" id="fill-9" style="background:var(--cool);"></div></div>
+    <span class="timer-label" id="label-9">0:45</span>
+  </div>
+  <div class="done-row" onclick="toggleCheck(this,event)"><input type="checkbox"><label>Done</label></div>
+</div>
+
+<!-- TIPS -->
+<div class="tips">
+  <h3>Quick Tips</h3>
+  <ul>
+    <li>Consistency beats intensity — gentle effort most days wins</li>
+    <li>If you're holding your breath, you're pushing too hard</li>
+    <li>Sharp pain = stop. Mild stretch discomfort = good</li>
+    <li>Morning stiffness is normal — you'll loosen up by the end</li>
+    <li>Check progress every 2–3 weeks: deeper squat? Flatter wall angels?</li>
+  </ul>
+</div>
+
+<!-- PROGRESS -->
+<div class="progress-wrap">
+  <div class="progress-bg"><div class="progress-fill" id="progressFill"></div></div>
+  <div class="progress-txt" id="progressText">0 of 10 complete</div>
+</div>
+
+<script>
+const TOTAL = 10;
+const timers = [];
+for (let i = 0; i < TOTAL; i++) {
+  const card = document.getElementById('card-' + i);
+  timers.push({ total: parseInt(card.dataset.seconds), remaining: parseInt(card.dataset.seconds), running: false, interval: null });
+}
+
+function fmtTime(s) {
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return m + ':' + (sec < 10 ? '0' : '') + sec;
+}
+
+function toggleTimer(idx) {
+  const t = timers[idx];
+  const btn = document.querySelector('#card-' + idx + ' .timer-btn');
+  if (t.running) {
+    clearInterval(t.interval); t.running = false; btn.textContent = '▶';
+    document.getElementById('card-' + idx).classList.remove('active');
+  } else {
+    if (t.remaining <= 0) t.remaining = t.total;
+    t.running = true; btn.textContent = '⏸';
+    document.getElementById('card-' + idx).classList.add('active');
+    t.interval = setInterval(function() {
+      t.remaining--;
+      updateTimerUI(idx);
+      if (t.remaining <= 0) {
+        clearInterval(t.interval); t.running = false; btn.textContent = '↺';
+        document.getElementById('card-' + idx).classList.remove('active');
+        const row = document.querySelector('#card-' + idx + ' .done-row');
+        if (!row.classList.contains('checked')) toggleCheck(row, null);
+        if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+      }
+    }, 1000);
+  }
+}
+
+function updateTimerUI(idx) {
+  const t = timers[idx];
+  document.getElementById('label-' + idx).textContent = fmtTime(t.remaining);
+  const pct = ((t.total - t.remaining) / t.total) * 100;
+  document.getElementById('fill-' + idx).style.width = pct + '%';
+}
+
+function toggleCheck(row, event) {
+  const cb = row.querySelector('input[type="checkbox"]');
+  if (event && event.target === cb) {
+    row.classList.toggle('checked', cb.checked);
+    updateProgress(); return;
+  }
+  cb.checked = !cb.checked;
+  row.classList.toggle('checked', cb.checked);
+  updateProgress();
+}
+
+function updateProgress() {
+  const checked = document.querySelectorAll('.done-row input:checked').length;
+  const pct = (checked / TOTAL) * 100;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressText').textContent =
+    checked === TOTAL ? 'All done — great work today!' : checked + ' of ' + TOTAL + ' complete';
+}
+
+// WAKE LOCK
+let wakeLock = null;
+async function requestWakeLock() {
+  try {
+    if ('wakeLock' in navigator) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', function() {
+        document.getElementById('wakeLockToggle').classList.remove('on');
+      });
+    }
+  } catch (e) {}
+}
+function toggleWakeLock() {
+  const toggle = document.getElementById('wakeLockToggle');
+  if (toggle.classList.contains('on')) {
+    toggle.classList.remove('on');
+    if (wakeLock) { wakeLock.release(); wakeLock = null; }
+  } else {
+    toggle.classList.add('on');
+    requestWakeLock();
+  }
+}
+document.addEventListener('visibilitychange', function() {
+  if (document.visibilityState === 'visible') {
+    const toggle = document.getElementById('wakeLockToggle');
+    if (toggle.classList.contains('on') && !wakeLock) requestWakeLock();
+  }
+});
+requestWakeLock();
+</script>
+</body>
+</html>
